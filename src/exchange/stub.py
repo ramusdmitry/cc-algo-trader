@@ -216,3 +216,146 @@ class Stub:
 
             if callback is not None:
                 callback()
+
+    def eval_exit(self):
+        if self.get_position_size() == 0:
+            return
+
+        price = self.get_market_price()
+
+        if self.get_exit_order()["trail_offset"] > 0 and self.get_trail_price() > 0:
+            trail_offset = self.get_exit_order()["trail_offset"]
+            trail_price = self.get_trail_price()
+            if self.get_position_size() > 0 and price - trail_offset < trail_price:
+                logger.info(
+                    f"Loss cut by trailing stop: {self.get_exit_order()['trail_offset']}"
+                )
+                self.close_all(self.get_exit_order()["trail_callback"])
+            elif self.get_position_size() < 0 and price + trail_offset > trail_price:
+                logger.info(
+                    f"Loss cut by trailing stop: {self.get_exit_order()['trail_offset']}"
+                )
+                self.close_all(self.get_exit_order()["trail_callback"])
+
+        if self.get_position_avg_price() > price:
+            close_rate = (
+                (self.get_position_avg_price() - price) / price - self.get_commission()
+            ) * self.get_leverage()
+            unrealised_pnl = -1 * self.get_position_size() * close_rate
+        else:
+            close_rate = (
+                (price - self.get_position_avg_price()) / self.get_position_avg_price()
+                - self.get_commission()
+            ) * self.get_leverage()
+            unrealised_pnl = self.get_position_size() * close_rate
+
+        if unrealised_pnl < 0 and 0 < self.get_exit_order()["loss"] < abs(
+            unrealised_pnl
+        ):
+            logger.info(f"Loss cut by stop loss: {self.get_exit_order()['loss']}")
+            self.close_all(self.get_exit_order()["loss_callback"])
+
+        if unrealised_pnl > 0 and 0 < self.get_exit_order()["profit"] < abs(
+            unrealised_pnl
+        ):
+            logger.info(
+                f"Take profit by stop profit: {self.get_exit_order()['profit']}"
+            )
+            self.close_all(self.get_exit_order()["profit_callback"])
+
+    @staticmethod
+    def override_strategy(strategy):
+        def wrapper(self, action, open, close, high, low, volume):
+            new_open_orders = []
+            pos_size = self.get_position_size()
+            trail_price = self.get_trail_price()
+
+            self.OHLC = {"open": open, "high": high, "low": low, "close": close}
+
+            if pos_size > 0 and low[-1] > trail_price:
+                self.set_trail_price(low[-1])
+            if pos_size < 0 and high[-1] < trail_price:
+                self.set_trail_price(high[-1])
+
+            index = 0
+
+            while True:
+
+                if index < len(self.open_orders):
+                    order = self.open_orders[index]
+                    index += 1
+                else:
+                    break
+
+                id = order["id"]
+                long = order["long"]
+                qty = order["qty"]
+                limit = order["limit"]
+                stop = order["stop"]
+                post_only = order["post_only"]
+                reduce_only = order["reduce_only"]
+                callback = order["callback"]
+
+                if reduce_only and (
+                    self.position_size == 0
+                    or (long and pos_size > 0)
+                    or (not long and pos_size < 0)
+                ):
+                    new_open_orders.append(
+                        {
+                            "id": id,
+                            "long": long,
+                            "qty": qty,
+                            "limit": limit,
+                            "stop": 0,
+                            "post_only": post_only,
+                            "reduce_only": reduce_only,
+                            "callback": callback,
+                        }
+                    )
+                    continue
+
+                if limit > 0 and stop > 0 and (high[-1] >= stop >= low[-1]):
+                    new_open_orders.append(
+                        {
+                            "id": id,
+                            "long": long,
+                            "qty": qty,
+                            "limit": limit,
+                            "stop": 0,
+                            "post_only": post_only,
+                            "reduce_only": reduce_only,
+                            "callback": callback,
+                        }
+                    )
+                    if not self.minute_granularity:
+                        logger.info(
+                            "Simulating Stop-Limit orders on historical bars can be erroneous "
+                            + "as there is no way to guess intra-bar price movement. "
+                            + "Stop-Limit orders are coverted into Limit orders "
+                            + "once the stop is hit and evaluated in successive candles. "
+                            + "Switch on Minute Granularity for a more accurate simulation of Stop-limit orders."
+                        )
+                    continue
+                elif limit > 0:
+                    if (long and low[-1] < limit) or (not long and high[-1] > limit):
+                        self.commit(id, long, qty, limit, True, reduce_only, callback)
+                        continue
+                elif stop > 0:
+                    if high[-1] >= stop >= low[-1]:
+                        self.commit(id, long, qty, stop, True, reduce_only, callback)
+                        continue
+
+                new_open_orders.append(order)
+
+            self.open_orders = new_open_orders
+
+            if self.is_exit_order_active:
+                self.eval_exit()
+
+            if self.is_sltp_active:
+                self.eval_sltp()
+
+            return strategy(self, action, open, close, high, low, volume)
+
+        return wrapper
