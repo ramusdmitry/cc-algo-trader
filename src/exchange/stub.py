@@ -263,6 +263,90 @@ class Stub:
             )
             self.close_all(self.get_exit_order()["profit_callback"])
 
+    def eval_sltp(self):
+        pos_size = self.get_position_size()
+        if pos_size == 0:
+            return
+
+        best_bid = self.market_price
+        best_ask = self.market_price
+        tp_percent_long = self.get_sltp_values()["profit_long"]
+        tp_percent_short = self.get_sltp_values()["profit_short"]
+
+        avg_entry = self.get_position_avg_price()
+
+        sl_percent_long = self.get_sltp_values()["stop_long"]
+        sl_percent_short = self.get_sltp_values()["stop_short"]
+
+        if sl_percent_long > 0:
+            if pos_size > 0:
+                sl_price_long = round(
+                    avg_entry - (avg_entry * sl_percent_long), self.quote_rounding
+                )
+                if self.OHLC["low"][-1] <= sl_price_long:
+                    self.close_all_at_price(
+                        sl_price_long, self.get_sltp_values()["stop_long_callback"]
+                    )
+        if sl_percent_short > 0:
+            if pos_size < 0:
+                sl_price_short = round(
+                    avg_entry + (avg_entry * sl_percent_short), self.quote_rounding
+                )
+                if self.OHLC["high"][-1] >= sl_price_short:
+                    self.close_all_at_price(
+                        sl_price_short, self.get_sltp_values()["stop_short_callback"]
+                    )
+
+        if (
+            self.isLongEntry[-1]
+            and not self.isLongEntry[-2]
+            and self.get_sltp_values()["eval_tp_next_candle"]
+        ) or (
+            self.isShortEntry[-1]
+            and not self.isShortEntry[-2]
+            and self.get_sltp_values()["eval_tp_next_candle"]
+        ):
+            return
+
+        if tp_percent_long > 0:
+            if pos_size > 0:
+                tp_price_long = round(
+                    avg_entry + (avg_entry * tp_percent_long), self.quote_rounding
+                )
+                if (
+                    tp_price_long <= best_ask
+                    and self.get_sltp_values()["eval_tp_next_candle"]
+                    and (
+                        not self.isLongEntry[-1]
+                        and self.isLongEntry[-2]
+                        and not self.isLongEntry[-3]
+                    )
+                ):
+                    tp_price_long = best_ask
+                if self.OHLC["high"][-1] >= tp_price_long:
+                    self.close_all_at_price(
+                        tp_price_long, self.get_sltp_values()["profit_long_callback"]
+                    )
+        if tp_percent_short > 0:
+            if pos_size < 0:
+                tp_price_short = round(
+                    avg_entry - (avg_entry * tp_percent_short), self.quote_rounding
+                )
+                if (
+                    tp_price_short >= best_bid
+                    and self.get_sltp_values()["eval_tp_next_candle"]
+                    and (
+                        not self.isShortEntry[-1]
+                        and self.isShortEntry[-2]
+                        and not self.isShortEntry[-3]
+                    )
+                ):
+                    tp_price_short = best_bid
+                if self.OHLC["low"][-1] <= tp_price_short:
+                    self.close_all_at_price(
+                        tp_price_short, self.get_sltp_values()["profit_short_callback"]
+                    )
+
     @staticmethod
     def override_strategy(strategy):
         def wrapper(self, action, open, close, high, low, volume):
