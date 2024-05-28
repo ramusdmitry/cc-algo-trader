@@ -19,6 +19,7 @@ from src import sync_obj_with_config, to_data_frame
 from src.config import config as conf
 from src.exchange.bybit.bybit_websocket import BybitWs
 from src.exchange_config import exchange_config
+import requests
 
 bybit_order_type_mapping = {"Market": "MARKET", "Limit": "LIMIT"}
 
@@ -64,6 +65,7 @@ class Bybit:
     order_update_log = True
     ohlcv_len = 100
     call_strat_on_start = True
+    
 
     def __init__(self, account, pair, demo=False, spot=False, threading=True):
         """
@@ -103,6 +105,7 @@ class Bybit:
         self.strategy = None
         self.timeframe_data = None
         self.timeframe_info = {}
+        self.news_api_url = "http://localhost:8888"
         self.sltp_values = {
             "profit_long": 0,
             "profit_short": 0,
@@ -2446,7 +2449,11 @@ class Bybit:
             try:
                 if self.strategy is not None:
                     self.timestamp = re_sample_data.iloc[-1].name.isoformat()
-                    self.strategy(t, open, close, high, low, volume)
+                    if hasattr(self.strategy, "requires_news"):
+                        news = requests.get(f"{self.news_api_url}/{self.pair}/latest/", params={"take": 100, "skip": 0})
+                        self.strategy(self, action, open, close, high, low, volume, news)
+                    else:
+                        self.strategy(t, open, close, high, low, volume)
                     if self.is_exit_order_active:
                         self.eval_exit()
                     if self.is_sltp_active:

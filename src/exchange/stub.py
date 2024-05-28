@@ -1,7 +1,6 @@
 from src import logger
 from src.config import config as conf
 
-
 class Stub:
     qty_in_usdt = False
     minute_granularity = False
