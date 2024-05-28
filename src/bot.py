@@ -69,7 +69,8 @@ class Bot:
             if self.exchange_arg == "bybit":
                 self.exchange = BybitBackTest(account=self.account, pair=self.pair)
         else:
-            raise NotImplementedError
+            if self.exchange_arg == "bybit":
+                self.exchange = Bybit(account=self.account, pair=self.pair, demo=self.test_net, spot=self.spot)
 
         if conf["args"].check_candles is not None:
             self.exchange.check_candles_flag = conf["args"].check_candles

@@ -125,8 +125,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.profile and args.profile in conf["args_profile"]:
-        for k, v in conf["args_profile"][args.profile].items():
+    if args.profile and args.profile in conf["profiles"]:
+        for k, v in conf["profiles"][args.profile].items():
             if k not in vars(args):
                 setattr(args, k, v)
 
