@@ -28,15 +28,18 @@ Derivatives и Spot.
 
 ## Доступные стратегии
 
-1. CandleTesterMult
-2. Channel Breakout
-3. Supertrend strategy
-4. Parabolic SAR
-5. MACD
-6. CandleTester
-7. Cross SMA
-8. RCI
-9. Open Close Cross Strategy
+1. Channel Breakout
+1. Supertrend strategy
+1. Parabolic SAR
+1. MACD
+
+1. Cross SMA
+1. RCI
+1. Open Close Cross Strategy
+
+- Sanity checks
+    1. CandleTesterMulti
+    1. CandleTester
 
 ## Требования
 
