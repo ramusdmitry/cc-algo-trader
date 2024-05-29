@@ -1,3 +1,4 @@
+import os
 from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.types import PeerChannel
@@ -6,13 +7,14 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 import asyncio
 from datetime import datetime
 
-api_id = 'your_api_id'
-api_hash = 'your_api_hash'
-phone = 'your_phone_number'
-influxdb_token = 'your_influxdb_token'
-org = 'your_org'
-bucket = 'your_bucket'
-url = 'http://localhost:8086'
+api_id = os.environ["TG_API_ID"]
+api_hash = os.environ["TG_API_HASH"]
+phone = os.environ["TG_PHONE"]
+channel_ids = os.environ["TG_CHANNELS"]
+influxdb_token = os.environ["INFLUX_TOKEN"]
+org = 'framework'
+bucket = 'news'
+url = 'http://localhost:13565'
 
 class TelegramNewsParser:
     def __init__(self):
@@ -56,7 +58,16 @@ class TelegramNewsParser:
                 .time(news['date'])
             self.write_api.write(bucket=bucket, org=org, record=point)
 
-    async def get_news(self, channel_username, limit=100, offset=0):
+    async def get_news(self, channel_username=channel_ids, limit=100, offset=0):
         news_list = await self.fetch_news(channel_username, limit, offset)
         self.save_news(news_list)
         return news_list
+    
+    async def run(self):
+        await self.get_news()
+
+
+if __name__ == "__main__":
+    parser = TelegramNewsParser()
+    loop = asyncio.get_event_loop()
+    loop.run_forever(parser.run())
