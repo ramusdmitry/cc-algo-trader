@@ -17,7 +17,7 @@ url = 'http://localhost:13565'
 
 query_api = InfluxDBClient(url=url, token=influxdb_token, org=org).query_api()
 
-class NewsRequest(BaseModel):1
+class NewsRequest(BaseModel):
     pair: str
     take: int = 100
     skip: int = 0

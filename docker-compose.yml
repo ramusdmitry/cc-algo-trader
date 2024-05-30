@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  influxdb:
+    image: influxdb:2.0
+    ports:
+      - "13565:13565"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_INIT_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=framework
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+
+  alpha-rptr:
+    build:
+      context: ./src/influx
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUXDB_URL=localhost:13565
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
+    volumes:
+      - ./src/influx:/app
+
+volumes:
+  influxdb-data:

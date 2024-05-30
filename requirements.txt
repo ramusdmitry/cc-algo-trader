@@ -76,3 +76,7 @@ urllib3==2.2.1
 webcolors==1.13
 websocket-client==1.8.0
 websockets==12.0
+influxdb-client[ciso]
+telethon
+fastapi
+uvicorn
