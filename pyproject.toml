@@ -1,0 +1,7 @@
+[tool.black]
+line-length = 160
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_third_party = "aiohttp,asyncio,ccxt"
