@@ -20,7 +20,7 @@ class Sample(Bot):
     def ohlcv_len(self):
         return 100
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
 
         lot = self.exchange.get_lot()
 
@@ -40,9 +40,7 @@ class Sample(Bot):
             long_entry_condition = crossover(sma1, sma2)
             short_entry_condition = crossunder(sma1, sma2)
 
-            self.exchange.sltp(
-                profit_long=1.25, profit_short=1.25, stop_long=1, stop_short=1.1
-            )
+            self.exchange.sltp(profit_long=1.25, profit_short=1.25, stop_long=1, stop_short=1.1)
 
             if long_entry_condition:
                 self.exchange.entry("Long", True, lot, callback=entry_callback)

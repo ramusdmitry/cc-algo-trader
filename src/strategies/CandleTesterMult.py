@@ -15,7 +15,7 @@ class CandleTesterMult(Bot):
     def options(self):
         return {}
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
 
         if action not in ["5m", "15m", "4h"]:
             return

@@ -1,6 +1,5 @@
 from src.bot import Bot
-from src.indicators import (cci, crossover, crossunder, ewma, hurst_exponent,
-                            macd, sma)
+from src.indicators import cci, crossover, crossunder, ewma, hurst_exponent, macd, sma
 
 
 class MACDLongOnly(Bot):
@@ -28,43 +27,30 @@ class MACDLongOnly(Bot):
                 profit = round(position_size * close_rate * -close, self.quote_rounding)
             else:
                 close_rate = (close - avg_entry_price) / avg_entry_price - commission
-                profit = round(
-                    position_size * close_rate * avg_entry_price, self.quote_rounding
-                )
+                profit = round(position_size * close_rate * avg_entry_price, self.quote_rounding)
 
         return profit
 
     def liquidation_price(self, position_size, avg_entry_price, balance):
 
         if position_size >= 0:
-            liquidation_price = (
-                (position_size * avg_entry_price * 1.012) - balance
-            ) / position_size
+            liquidation_price = ((position_size * avg_entry_price * 1.012) - balance) / position_size
         else:
-            liquidation_price = (
-                (position_size * avg_entry_price * 0.988) - balance
-            ) / position_size
+            liquidation_price = ((position_size * avg_entry_price * 0.988) - balance) / position_size
 
         return round(liquidation_price, self.quote_rounding)
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         self.asset_rounding = self.exchange.asset_rounding
         self.quote_rounding = self.exchange.quote_rounding
         self.exchange.leverage = self.leverage
         balance = self.exchange.get_balance()
 
-        # ******************** Entry Type, Trade Type, Exit Type and Trigger Input ************************* #
-        # -------------------------------------------------------------------------------------------------- #
         trade_side = True  # True for long only, False for short only, None trading both
-        # -------------------------------------------------------------------------------------------------- #
-        # -------------------------------------------------------------------------------------------------- #
-        # ------- Parameters ------------------------------------------------------------------------------ #
 
         fast_period = 12
         slow_period = 26
         signal_period = 9
-
-        # //////////////////////////////   MACD      //////////////////////////
 
         macd_line, signal_line, histogram = macd(
             close,
@@ -73,12 +59,8 @@ class MACDLongOnly(Bot):
             signalperiod=signal_period,
         )
 
-        # ///////////////////////////////     Signals      ////////////////////
-
         long = crossover(macd_line, signal_line)
         short = crossunder(macd_line, signal_line)
-
-        # //////////////////////////////     Execution     ////////////////////
 
         if long and not trade_side:
             self.exchange.entry("Long", True, abs(self.entry_position_size(balance)))
@@ -86,17 +68,11 @@ class MACDLongOnly(Bot):
         if short and trade_side:
             self.exchange.entry("Short", False, abs(self.entry_position_size(balance)))
 
-        # /////////////////////////////     Exit for long only  ///////////////
-
         if short and not trade_side:
             self.exchange.close_all()
 
-        # /////////////////////////////     Exit for Short only  //////////////
-
         if long and trade_side:
             self.exchange.close_all()
-
-        # /////////////////////////////      Plot MACD (and other indicotors to
 
         cci1 = cci(high, low, close, 20)
         sma1 = sma(close, 20)

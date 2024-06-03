@@ -1,7 +1,7 @@
 from hyperopt import hp
 
 from src.bot import Bot
-from src.indicators import highest, last, lowest
+from src.indicators import highest, lowest
 
 
 class Doten(Bot):
@@ -13,12 +13,12 @@ class Doten(Bot):
             "length": hp.randint("length", 1, 30, 1),
         }
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         if action == "2h":
             lot = self.exchange.get_lot()
             length = self.input("length", int, 9)
-            up = last(highest(high, length))
-            dn = last(lowest(low, length))
+            up = highest(high, length)[-1]
+            dn = lowest(low, length)[-1]
             self.exchange.plot("up", up, "b")
             self.exchange.plot("dn", dn, "r")
             self.exchange.entry("Long", True, round(lot / 20), stop=up)

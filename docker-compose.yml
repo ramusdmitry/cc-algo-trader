@@ -1,31 +1,16 @@
 version: '3.8'
-
 services:
-  influxdb:
-    image: influxdb:2.0
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: timescaledb
     ports:
-      - "13565:13565"
+      - "5432:5432"
     environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_INIT_USERNAME}
-      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_INIT_PASSWORD}
-      - DOCKER_INFLUXDB_INIT_ORG=framework
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN}
+      POSTGRES_USER: your-username
+      POSTGRES_PASSWORD: your-password
+      POSTGRES_DB: your-dbname
     volumes:
-      - influxdb-data:/var/lib/influxdb2
-
-  alpha-rptr:
-    build:
-      context: ./src/influx
-    depends_on:
-      - influxdb
-    environment:
-      - INFLUXDB_URL=localhost:13565
-      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
-      - INFLUXDB_ORG=${INFLUXDB_ORG}
-      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
-    volumes:
-      - ./src/influx:/app
+      - timescaledb_data:/var/lib/postgresql/data
 
 volumes:
-  influxdb-data:
+  timescaledb_data:

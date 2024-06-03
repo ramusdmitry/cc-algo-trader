@@ -1,7 +1,6 @@
 import json
 import os
 
-
 from src.config import config as conf
 from src.exchange.bybit.bybit import Bybit
 from src.exchange.bybit.bybit_backtest import BybitBackTest
@@ -45,7 +44,6 @@ class Bot:
     def set_session(self, session):
         self.session.load(session)
 
-
     def ohlcv_len(self):
         return 100
 
@@ -56,7 +54,7 @@ class Bot:
         else:
             return defval
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         pass
 
     def run(self):
@@ -86,7 +84,6 @@ class Bot:
     def stop(self):
         if self.exchange is None:
             return
-
 
         if self.session_file is not None:
             self.session_file.truncate(0)

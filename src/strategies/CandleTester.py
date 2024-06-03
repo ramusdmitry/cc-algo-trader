@@ -9,7 +9,7 @@ class CandleTester(Bot):
     def options(self):
         return {}
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         logger.info(f"open: {open[-1]}")
         logger.info(f"high: {high[-1]}")
         logger.info(f"low: {low[-1]}")

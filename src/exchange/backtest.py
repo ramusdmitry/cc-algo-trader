@@ -11,8 +11,13 @@ import dateutil.parser
 import numpy as np
 import pandas as pd
 
-from src import (allowed_range_minute_granularity, find_timeframe_string,
-                 load_data, logger, resample)
+from src import (
+    allowed_range_minute_granularity,
+    find_timeframe_string,
+    load_data,
+    logger,
+    resample,
+)
 from src.config import config as conf
 from src.exchange.stub import Stub
 from src.indicators import sharpe_ratio
@@ -65,14 +70,14 @@ class BackTest(Stub):
         self.OHLC_FILENAME = OHLC_FILENAME.format(exchange, pair, bin_size)
 
     def commit(
-        self,
-        id,
-        long,
-        qty,
-        price,
-        need_commission=False,
-        callback=None,
-        reduce_only=False,
+            self,
+            id,
+            long,
+            qty,
+            price,
+            need_commission=False,
+            callback=None,
+            reduce_only=False,
     ):
 
         Stub.commit(self, id, long, qty, price, need_commission, callback, reduce_only)
@@ -100,18 +105,12 @@ class BackTest(Stub):
         self.df_ohlcv = self.df_ohlcv.set_index(self.df_ohlcv.columns[0])
         self.df_ohlcv.index = pd.to_datetime(self.df_ohlcv.index, errors="coerce")
 
-        warmup_duration = (
-            allowed_range_minute_granularity[self.warmup_tf][3] * self.ohlcv_len
-        )
+        warmup_duration = allowed_range_minute_granularity[self.warmup_tf][3] * self.ohlcv_len
 
         if conf["args"].from_date != "epoch":
-            cut_off_time = pd.to_datetime(
-                conf["args"].from_date, utc=True
-            ) - np.timedelta64(warmup_duration, "m")
+            cut_off_time = pd.to_datetime(conf["args"].from_date, utc=True) - np.timedelta64(warmup_duration, "m")
             self.df_ohlcv = self.df_ohlcv.loc[(self.df_ohlcv.index >= cut_off_time)]
-            logger.info(
-                f"OHLCV Buffer Start: {cut_off_time} - Strategy Start: {conf['args'].from_date} (Inclusive)"
-            )
+            logger.info(f"OHLCV Buffer Start: {cut_off_time} - Strategy Start: {conf['args'].from_date} (Inclusive)")
 
         if conf["args"].to_date != "now":
             cut_off_time = pd.to_datetime(conf["args"].to_date, utc=True)
@@ -130,25 +129,17 @@ class BackTest(Stub):
             self.timeframe_data = {}
             for t in self.bin_size:
                 self.timeframe_data[t] = (
-                    resample(
-                        self.df_ohlcv, t, minute_granularity=self.minute_granularity
-                    )
+                    resample(self.df_ohlcv, t, minute_granularity=self.minute_granularity)
                     if self.minute_granularity
                     else self.df_ohlcv
                 )
                 self.timeframe_info[t] = {
                     "allowed_range": (
-                        allowed_range_minute_granularity[t][0]
-                        if self.minute_granularity
-                        else self.bin_size[0]
+                        allowed_range_minute_granularity[t][0] if self.minute_granularity else self.bin_size[0]
                     ),
-                    "ohlcv": self.timeframe_data[t][
-                        :-1
-                    ],
+                    "ohlcv": self.timeframe_data[t][:-1],
                     "last_action_index": (
-                        math.ceil(
-                            self.warmup_len / allowed_range_minute_granularity[t][3]
-                        )
+                        math.ceil(self.warmup_len / allowed_range_minute_granularity[t][3])
                         if self.minute_granularity
                         else self.warmup_len
                     ),
@@ -159,22 +150,14 @@ class BackTest(Stub):
             self.draw_down_history.append(self.max_draw_down_session_perc)
 
         for i in range(len(self.df_ohlcv) - self.warmup_len):
-            self.data = self.df_ohlcv.iloc[i : i + self.warmup_len + 1, :]
+            self.data = self.df_ohlcv.iloc[i: i + self.warmup_len + 1, :]
             index = self.data.iloc[-1].name
             new_data = self.data.iloc[-1:]
 
-            action = (
-                "1m"
-                if (self.minute_granularity or len(self.timeframe_info) > 1)
-                else self.bin_size[0]
-            )
+            action = "1m" if (self.minute_granularity or len(self.timeframe_info) > 1) else self.bin_size[0]
 
             timeframes_to_process = [
-                (
-                    allowed_range_minute_granularity[t][3]
-                    if self.timeframes_sorted is not None
-                    else t
-                )
+                (allowed_range_minute_granularity[t][3] if self.timeframes_sorted is not None else t)
                 for t in self.timeframe_info
                 if self.timeframe_info[t]["allowed_range"] == action
             ]
@@ -190,15 +173,10 @@ class BackTest(Stub):
 
                 last_action_index = self.timeframe_info[t]["last_action_index"]
 
-                if (
-                    self.timeframe_data[t].iloc[last_action_index].name
-                    != new_data.iloc[0].name
-                ):
+                if self.timeframe_data[t].iloc[last_action_index].name != new_data.iloc[0].name:
                     continue
 
-                tf_ohlcv_data = self.timeframe_data[t].iloc[
-                    last_action_index - self.ohlcv_len : last_action_index + 1
-                ]
+                tf_ohlcv_data = self.timeframe_data[t].iloc[last_action_index - self.ohlcv_len: last_action_index + 1]
 
                 close = tf_ohlcv_data["close"].values
                 open = tf_ohlcv_data["open"].values
@@ -206,30 +184,18 @@ class BackTest(Stub):
                 low = tf_ohlcv_data["low"].values
                 volume = tf_ohlcv_data["volume"].values
 
-                if (
-                    t == "1m" and self.minute_granularity
-                ) or not self.minute_granularity:
-                    if (
-                        self.get_position_size() > 0
-                        and low[-1] > self.get_trail_price()
-                    ):
+                if (t == "1m" and self.minute_granularity) or not self.minute_granularity:
+                    if self.get_position_size() > 0 and low[-1] > self.get_trail_price():
                         self.set_trail_price(low[-1])
-                    if (
-                        self.get_position_size() < 0
-                        and high[-1] < self.get_trail_price()
-                    ):
+                    if self.get_position_size() < 0 and high[-1] < self.get_trail_price():
                         self.set_trail_price(high[-1])
                     self.market_price = close[-1]
                     self.OHLC = {"open": open, "high": high, "low": low, "close": close}
 
                     self.index = index
-                    self.balance_history.append(
-                        (self.get_balance() - self.start_balance)
-                    )
+                    self.balance_history.append((self.get_balance() - self.start_balance))
 
-                self.timestamp = (
-                    tf_ohlcv_data.iloc[-1].name.isoformat().replace("T", " ")
-                )
+                self.timestamp = tf_ohlcv_data.iloc[-1].name.isoformat().replace("T", " ")
                 self.strategy(t, open, close, high, low, volume)
                 self.timeframe_info[t]["last_action_index"] += 1
 
@@ -238,17 +204,13 @@ class BackTest(Stub):
 
     def security(self, bin_size, data=None):
         if data is None and bin_size not in self.bin_size:
-            timeframe_list = [
-                allowed_range_minute_granularity[t][3] for t in self.bin_size
-            ]
+            timeframe_list = [allowed_range_minute_granularity[t][3] for t in self.bin_size]
             timeframe_list.sort(reverse=True)
             t = find_timeframe_string(timeframe_list[-1])
             data = self.timeframe_data[t]
 
         self.resample_data[bin_size] = resample(data, bin_size)
-        return self.resample_data[bin_size][: self.data.iloc[-1].name].iloc[
-            -1 * self.ohlcv_len :, :
-        ]
+        return self.resample_data[bin_size][: self.data.iloc[-1].name].iloc[-1 * self.ohlcv_len:, :]
 
     def check_candles(self, df):
         logger.info("-------")
@@ -258,10 +220,7 @@ class BackTest(Stub):
         logger.info(f"End: {df.iloc[-1][0]}")
         logger.info("-------")
 
-        diff = (
-            dateutil.parser.isoparse(df.iloc[1][0])
-            - dateutil.parser.isoparse(df.iloc[0][0])
-        ).total_seconds()
+        diff = (dateutil.parser.isoparse(df.iloc[1][0]) - dateutil.parser.isoparse(df.iloc[0][0])).total_seconds()
 
         logger.info(f"Interval: {diff}s")
         logger.info("-------")
@@ -349,22 +308,19 @@ class BackTest(Stub):
             ORDERS_FILENAME = os.path.join(os.getcwd(), "./", conf["args"].order_log)
             shutil.copy(ORDERS_FILENAME, "html/data/orders.csv")
 
+        result_info = {
+            "TRADE COUNT": self.order_count,
+            "BALANCE": self.get_balance(),
+            "PROFIT RATE": self.get_balance() / self.start_balance * 100,
+            "WIN RATE": 0 if self.order_count == 0 else self.win_count / (self.win_count + self.lose_count) * 100,
+            "PROFIT FACTOR": self.win_profit if self.lose_loss == 0 else self.win_profit / self.lose_loss,
+            "SHARPE RATIO": sharpe_ratio(self.balance_history, 0),
+            "MAX DRAW DOWN TOTAL": f"{round(self.max_draw_down_session, 4)} or {round(self.max_draw_down_session_perc, 2)}%"
+        }
+
         logger.info("============== Result ================")
-        logger.info(f"TRADE COUNT         : {self.order_count}")
-        logger.info(f"BALANCE             : {self.get_balance()}")
-        logger.info(
-            f"PROFIT RATE         : {self.get_balance()/self.start_balance*100} %"
-        )
-        logger.info(
-            f"WIN RATE            : {0 if self.order_count == 0 else self.win_count/(self.win_count + self.lose_count)*100} %"
-        )
-        logger.info(
-            f"PROFIT FACTOR       : {self.win_profit if self.lose_loss == 0 else self.win_profit/self.lose_loss}"
-        )
-        logger.info(f"SHARPE RATIO        : {sharpe_ratio(self.balance_history, 0)}")
-        logger.info(
-            f"MAX DRAW DOWN TOTAL : {round(self.max_draw_down_session, 4)} or {round(self.max_draw_down_session_perc, 2)}%"
-        )
+        for key, value in result_info.items():
+            logger.info(f"{key:20}: {value}")
         logger.info("======================================")
 
         if not plot:
@@ -401,15 +357,9 @@ class BackTest(Stub):
         plt.ylabel("Price(USD)")
         ymin = min(self.df_ohlcv["low"]) - 0.05
         ymax = max(self.df_ohlcv["high"]) + 0.05
-        plt.vlines(
-            self.buy_signals, ymin, ymax, "blue", linestyles="dashed", linewidth=1
-        )
-        plt.vlines(
-            self.sell_signals, ymin, ymax, "red", linestyles="dashed", linewidth=1
-        )
-        plt.vlines(
-            self.close_signals, ymin, ymax, "green", linestyles="dashed", linewidth=1
-        )
+        plt.vlines(self.buy_signals, ymin, ymax, "blue", linestyles="dashed", linewidth=1)
+        plt.vlines(self.sell_signals, ymin, ymax, "red", linestyles="dashed", linewidth=1)
+        plt.vlines(self.close_signals, ymin, ymax, "green", linestyles="dashed", linewidth=1)
 
         i = i + 1
 
@@ -456,9 +406,7 @@ class BackTest(Stub):
             elif isinstance(value, (int, float, np.number)):
                 self.df_ohlcv.at[self.index, name] = value
             else:
-                raise ValueError(
-                    "Invalid value type. Expected dict, integer, or float."
-                )
+                raise ValueError("Invalid value type. Expected dict, integer, or float.")
         except Exception as e:
             print(f"Error: {e}")
 

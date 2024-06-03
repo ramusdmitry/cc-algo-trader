@@ -7,7 +7,7 @@ class SAR(Bot):
     leverage = 1
 
     def __init__(self):
-        Bot.__init__(self, ['12h'])
+        Bot.__init__(self, ["12h"])
 
     def ohlcv_len(self):
         return 99
@@ -26,26 +26,20 @@ class SAR(Bot):
                 profit = round(position_size * close_rate * -close, self.quote_rounding)
             else:
                 close_rate = (close - avg_entry_price) / avg_entry_price - commission
-                profit = round(
-                    position_size * close_rate * avg_entry_price, self.quote_rounding
-                )
+                profit = round(position_size * close_rate * avg_entry_price, self.quote_rounding)
 
         return profit
 
     def liquidation_price(self, position_size, avg_entry_price, balance):
 
         if position_size >= 0:
-            liquidation_price = (
-                (position_size * avg_entry_price * 1.012) - balance
-            ) / position_size
+            liquidation_price = ((position_size * avg_entry_price * 1.012) - balance) / position_size
         else:
-            liquidation_price = (
-                (position_size * avg_entry_price * 0.988) - balance
-            ) / position_size
+            liquidation_price = ((position_size * avg_entry_price * 0.988) - balance) / position_size
 
         return round(liquidation_price, self.quote_rounding)
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         self.asset_rounding = self.exchange.asset_rounding
         self.quote_rounding = self.exchange.quote_rounding
         self.exchange.leverage = self.leverage
@@ -55,13 +49,10 @@ class SAR(Bot):
         increment = 0.002
         maximum = 0.1
 
-
         psar = sar(high, low, increment, maximum)
-
 
         long = close[-1] > psar[-1]
         short = close[-1] < psar[-1]
-
 
         if long and trade_side is not False:
             self.exchange.entry("Long", True, abs(self.entry_position_size(balance)))

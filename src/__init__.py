@@ -210,11 +210,9 @@ def symlink(target, link_name, overwrite=False):
 
     try:
         if not os.path.islink(link_name) and os.path.isdir(link_name):
-            raise IsADirectoryError(
-                f"Cannot symlink over existing directory: '{link_name}'"
-            )
+            raise IsADirectoryError(f"Cannot symlink over existing directory: '{link_name}'")
         os.replace(temp_link_name, link_name)
-    except:
+    except Exception:
         if os.path.islink(temp_link_name):
             os.remove(temp_link_name)
         raise
@@ -276,22 +274,14 @@ def verify_series(series: Series, min_length: int = None) -> Series:
 
 
 def to_data_frame(data):
-    data_frame = pd.DataFrame(
-        data, columns=["timestamp", "high", "low", "open", "close", "volume"]
-    )
+    data_frame = pd.DataFrame(data, columns=["timestamp", "high", "low", "open", "close", "volume"])
     data_frame = data_frame.set_index("timestamp")
     data_frame = data_frame.tz_localize(None).tz_localize("UTC", level=0)
     return data_frame
 
 
-def resample(
-    data_frame, bin_size, minute_granularity=False, label="right", closed="right"
-):
-    resample_time = (
-        allowed_range_minute_granularity[bin_size][1]
-        if minute_granularity
-        else allowed_range[bin_size][1]
-    )
+def resample(data_frame, bin_size, minute_granularity=False, label="right", closed="right"):
+    resample_time = allowed_range_minute_granularity[bin_size][1] if minute_granularity else allowed_range[bin_size][1]
     return data_frame.resample(resample_time, label=label, closed=closed).agg(
         {
             "open": "first",
@@ -421,7 +411,6 @@ class InfluxDB:
                 pass
 
         return
-
 
 
 def log_metrics(timestamp, collection, metrics={}, tags={}):

@@ -27,56 +27,38 @@ class SupertrendStrat(Bot):
                 profit = round(position_size * close_rate * -close, self.quote_rounding)
             else:
                 close_rate = (close - avg_entry_price) / avg_entry_price - commission
-                profit = round(
-                    position_size * close_rate * avg_entry_price, self.quote_rounding
-                )
+                profit = round(position_size * close_rate * avg_entry_price, self.quote_rounding)
 
         return profit
 
     def liquidation_price(self, position_size, avg_entry_price, balance):
 
         if position_size >= 0:
-            liquidation_price = (
-                (position_size * avg_entry_price * 1.012) - balance
-            ) / position_size  # long
+            liquidation_price = ((position_size * avg_entry_price * 1.012) - balance) / position_size  # long
         else:
-            liquidation_price = (
-                (position_size * avg_entry_price * 0.988) - balance
-            ) / position_size  # short
+            liquidation_price = ((position_size * avg_entry_price * 0.988) - balance) / position_size  # short
 
         return round(liquidation_price, self.quote_rounding)
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         self.asset_rounding = self.exchange.asset_rounding
         self.quote_rounding = self.exchange.quote_rounding
         self.exchange.leverage = self.leverage
         balance = self.exchange.get_balance()
 
-        # ******************** Entry Type, Trade Type, Exit Type and Trigger Input ************************* #
-        # -------------------------------------------------------------------------------------------------- #
         trade_side = None  # True for long only, False for short only, None trading both
-        # -------------------------------------------------------------------------------------------------- #
-        # -------------------------------------------------------------------------------------------------- #
-        # ------- Parameters ------------------------------------------------------------------------------- #
         length = 10
         multiplier = 5
-        # //////////////////////////////   Supertrend      ////////////////////////////////////////////////////
-
         if self.supertrend is None:
             self.supertrend = Supertrend(high, low, close, length, multiplier)
 
-        # /////////////////////////////  Update Supertrend  ///////////////////////////////////////////////////
         self.supertrend.update(high, low, close)
 
         trend = self.supertrend.trend
         dir = self.supertrend.dir
 
-        # ///////////////////////////////     Signals      /////////////////////////////////////////////////////
-
         long = dir[-1] == 1
         short = dir[-1] == -1
-
-        # //////////////////////////////     Execution     /////////////////////////////////////////////////////
 
         if long and trade_side is not False:
             self.exchange.entry("Long", True, abs(self.entry_position_size(balance)))

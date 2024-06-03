@@ -1,6 +1,7 @@
 import threading
 import time
 
+
 class Monitor:
     instance = None
     lock = threading.Lock()

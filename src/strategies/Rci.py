@@ -15,7 +15,7 @@ class Rci(Bot):
             "rcv_long_len": hp.quniform("rcv_long_len", 10, 20, 1),
         }
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         lot = self.exchange.get_lot()
 
         itv_s = self.input("rcv_short_len", int, 5)
@@ -29,9 +29,9 @@ class Rci(Bot):
         long = ((-80 > rci_s[-1] > rci_s[-2]) or (-82 > rci_m[-1] > rci_m[-2])) and (
             rci_l[-1] < -10 and rci_l[-2] > rci_l[-2]
         )
-        short = (
-            (80 < rci_s[-1] < rci_s[-2]) or (rci_m[-1] < -82 and rci_m[-1] < rci_m[-2])
-        ) and (10 < rci_l[-1] < rci_l[-2])
+        short = ((80 < rci_s[-1] < rci_s[-2]) or (rci_m[-1] < -82 and rci_m[-1] < rci_m[-2])) and (
+            10 < rci_l[-1] < rci_l[-2]
+        )
         close_all = 80 < rci_m[-1] < rci_m[-2] or -80 > rci_m[-1] > rci_m[-2]
 
         if long:

@@ -8,8 +8,7 @@ from datetime import datetime, timezone
 import requests
 import websocket
 
-from src import (bybit_allowed_range,
-                 find_timeframe_string, logger, to_data_frame)
+from src import bybit_allowed_range, find_timeframe_string, logger, to_data_frame
 from src.config import config as conf
 from src.monitor import Monitor
 
@@ -20,9 +19,7 @@ def generate_nonce():
 
 class BybitWs:
 
-    def __init__(
-        self, account, pair, bin_size, spot=False, is_unified=False, test=False
-    ):
+    def __init__(self, account, pair, bin_size, spot=False, is_unified=False, test=False):
         self.account = account
         self.pair = pair.replace("-", "") if pair.endswith("PERP") else pair
         self.bin_size = bin_size
@@ -63,9 +60,7 @@ class BybitWs:
                 )
 
         self.endpoint_private = (
-            "wss://stream-testnet.bybit.com/v5/private"
-            if self.testnet
-            else "wss://stream.bybit.com/v5/private"
+            "wss://stream-testnet.bybit.com/v5/private" if self.testnet else "wss://stream.bybit.com/v5/private"
         )
 
         self.__create_public()
@@ -121,17 +116,11 @@ class BybitWs:
         )
 
         if len(api_key) and len(api_secret) == 0:
-            logger.info(
-                "WebSocket is not able to authenticate, make sure you added api key and secret to config.py"
-            )
+            logger.info("WebSocket is not able to authenticate, make sure you added api key and secret to config.py")
         expires = str(int((time.time() + 1) * 1000))
 
         _val = "GET/realtime" + expires
-        signature = str(
-            hmac.new(
-                bytes(api_secret, "utf-8"), bytes(_val, "utf-8"), digestmod="sha256"
-            ).hexdigest()
-        )
+        signature = str(hmac.new(bytes(api_secret, "utf-8"), bytes(_val, "utf-8"), digestmod="sha256").hexdigest())
 
         ws.send(json.dumps({"op": "auth", "args": [api_key, expires, signature]}))
 
@@ -157,8 +146,7 @@ class BybitWs:
             json.dumps(
                 {
                     "op": "subscribe",
-                    "args": klines
-                    + ["tickers." + self.pair, "orderbook.1." + self.pair],
+                    "args": klines + ["tickers." + self.pair, "orderbook.1." + self.pair],
                 }
             )
         )
@@ -237,11 +225,7 @@ class BybitWs:
                         current_minute = int(obj["ts"] / 60000)
                         if self.last_heartbeat < current_minute:
                             try:
-                                requests.get(
-                                    conf["healthchecks.io"][self.account][
-                                        "websocket_heartbeat"
-                                    ]
-                                )
+                                requests.get(conf["healthchecks.io"][self.account]["websocket_heartbeat"])
                                 self.last_heartbeat = current_minute
                             except Exception as e:
                                 self.log(e)
@@ -264,9 +248,7 @@ class BybitWs:
                         }
                     ]
 
-                    data[0]["timestamp"] = datetime.fromtimestamp(
-                        data[0]["timestamp"] / 1000, tz=timezone.utc
-                    )
+                    data[0]["timestamp"] = datetime.fromtimestamp(data[0]["timestamp"] / 1000, tz=timezone.utc)
                     if self.bootstrapped:
                         self.__emit(action, action, to_data_frame(data))
 
@@ -293,15 +275,11 @@ class BybitWs:
                 if obj["op"] == "auth" and obj["success"]:
                     self.bootstrapped = True
                     logger.info("WSP Connection Successful")
-                if (obj["op"] == "ping" or obj["op"] == "pong") and obj[
-                    "req_id"
-                ] == "private":
+                if (obj["op"] == "ping" or obj["op"] == "pong") and obj["req_id"] == "private":
                     self.monitor.ping_topic("private_ws")
                     self.log("WSP Keep Alive Received!")
                     try:
-                        requests.get(
-                            conf["healthchecks.io"][self.account]["listenkey_heartbeat"]
-                        )
+                        requests.get(conf["healthchecks.io"][self.account]["listenkey_heartbeat"])
                     except Exception as e:
                         self.log(f"Healthcheck Error: {e}")
 
@@ -310,24 +288,13 @@ class BybitWs:
             logger.error(traceback.format_exc())
 
     def __emit(self, key, action, value):
-        """
-        send data
-        """
         if key in self.handlers:
             self.handlers[key](action, value)
 
     def bind(self, key, func):
-        """
-        bind fn
-        :param key:
-        :param func:
-        """
         self.handlers[key] = func
 
     def close(self):
-        """
-        close websocket
-        """
         self.is_running = False
         self.ws.close()
         self.wsp.close()

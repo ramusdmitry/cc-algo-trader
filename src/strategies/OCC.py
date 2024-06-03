@@ -27,7 +27,7 @@ class OCC(Bot):
             "div_threshold": hp.quniform("div_threshold", 1, 6, 0.1),
         }
 
-    def strategy(self, action, open, close, high, low, volume):
+    def strategy(self, action, open, close, high, low, volume, news=None):
         lot = self.exchange.get_lot()
 
         variant_type = self.input(defval=5, title="variant_type", type=int)
@@ -61,19 +61,12 @@ class OCC(Bot):
         self.exchange.plot("val_open", val_open[-1], "b")
         self.exchange.plot("val_close", val_close[-1], "r")
 
-        self.exchange.entry(
-            "Long", True, lot, stop=math.floor(low_val), when=(sma_val[-1] < low_val)
-        )
-        self.exchange.entry(
-            "Short", False, lot, stop=math.ceil(high_val), when=(sma_val[-1] > high_val)
-        )
+        self.exchange.entry("Long", True, lot, stop=math.floor(low_val), when=(sma_val[-1] < low_val))
+        self.exchange.entry("Short", False, lot, stop=math.ceil(high_val), when=(sma_val[-1] > high_val))
 
         open_close_div = sma(numpy.abs(val_open - val_close), sma_len)
 
-        if (
-            open_close_div[-1] > div_threshold
-            and open_close_div[-2] > div_threshold < open_close_div[-2]
-        ):
+        if open_close_div[-1] > div_threshold and open_close_div[-2] > div_threshold < open_close_div[-2]:
             self.exchange.close_all()
 
         self.eval_time = source.iloc[-1].name

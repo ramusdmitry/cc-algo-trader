@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import pandas as pd
 
@@ -8,6 +8,7 @@ from src import allowed_range, delta, logger, sync_obj_with_config
 from src.exchange.backtest import BackTest
 from src.exchange.bybit.bybit_stub import BybitStub
 from src.exchange_config import exchange_config
+from src.timescaledb.client import TimescaleDBClient
 
 
 class BybitBackTest(BackTest, BybitStub):
@@ -22,24 +23,26 @@ class BybitBackTest(BackTest, BybitStub):
 
     def __init__(self, account, pair):
         """
-        Constructor for BinanceFuturesBackTest class.
+        Конструктор для класса BybitBackTest.
         Args:
-            account (str): The account to use for the backtest.
-            pair (str): The trading pair to backtest.
+            account (str): Аккаунт для использования в бэктесте.
+            pair (str): Торговая пара для бэктеста.
         """
         BybitStub.__init__(self, account, pair=pair, threading=False)
         BackTest.__init__(self)
 
         self.pair = pair
+        self.db_client = TimescaleDBClient()
+        self.db_client.connect()
 
         sync_obj_with_config(exchange_config["bybit"], BybitBackTest, self)
 
     def on_update(self, bin_size, strategy):
         """
-        Register the strategy function.
+        Регистрация функции стратегии.
         Args:
-            bin_size (str): The bin size for the OHLCV data.
-            strategy (function): The strategy function to be executed during the backtest.
+            bin_size (str): Временной интервал для данных OHLCV.
+            strategy (function): Функция стратегии, выполняемая в процессе бэктеста.
         """
         self.bin_size = bin_size
         self.set_paths("bybit", pair=self.pair, bin_size=self.bin_size)
@@ -48,9 +51,43 @@ class BybitBackTest(BackTest, BybitStub):
         BybitStub.on_update(self, bin_size, strategy)
         BackTest.crawler_run(self)
 
+    def fetch_backtest_data(self, bin_size, start_time, end_time):
+        """
+        Запрос данных для бэктеста из TimescaleDB.
+        """
+        conditions = {
+            'measurement': 'backtest_data',
+            'tags': f'pair:{self.pair},bin_size:{bin_size}',
+            'fields': f'start_time:{start_time},end_time:{end_time}'
+        }
+        return self.db_client.read(self.db_client.metrics_table, conditions)
+
+    def store_backtest_result(self, result):
+        """
+        Сохранение результатов бэктеста в TimescaleDB.
+        """
+        self.db_client.create(
+            self.db_client.metrics_table,
+            {
+                "time": datetime.utcnow(),
+                "measurement": "backtest_result",
+                "tags": f'pair:{self.pair}',
+                "fields": f'result:{result}'
+            }
+        )
+
+    def __del__(self):
+        self.db_client.close()
+
     def download_data(self, bin_size, start_time, end_time):
         """
-        download or get amd return ohlcv data
+        Загрузка данных OHLCV для указанного временного интервала.
+        Args:
+            bin_size (str): Временной интервал.
+            start_time (datetime): Начальное время.
+            end_time (datetime): Конечное время.
+        Returns:
+            pd.DataFrame: Данные OHLCV.
         """
         data = pd.DataFrame()
         left_time = None
@@ -79,32 +116,23 @@ class BybitBackTest(BackTest, BybitStub):
                     is_last_fetch = True
 
             except IndexError:
-                start_time = start_time + timedelta(
-                    days=self.search_oldest if self.search_oldest else 1
-                )
+                start_time = start_time + timedelta(days=self.search_oldest if self.search_oldest else 1)
                 left_time = None
                 logger.info(
-                    f"Failed to fetch data, start stime is too far in history.\n\
+                    f"Failed to fetch data, start time is too far in history.\n\
                     >>>  Searching, please wait. <<<\n\
                     Searching for oldest viable historical data, next start time attempt: {start_time}"
                 )
                 time.sleep(0.25)
                 continue
 
-            source = self.fetch_ohlcv(
-                bin_size=bin_size, start_time=left_time, end_time=right_time
-            )
+            source = self.fetch_ohlcv(bin_size=bin_size, start_time=left_time, end_time=right_time)
 
             if search_left and not os.path.exists(file):
-                logger.info(
-                    "Searching for older historical data.\n>>>  Searching, please wait. <<<"
-                )
+                logger.info("Searching for older historical data.\n>>>  Searching, please wait. <<<")
                 start_time = start_time - timedelta(days=self.search_oldest)
                 left_time = None
-                if len(source) == 0 or (
-                    last_search_ts is not None
-                    and last_search_ts == source.iloc[-1].name
-                ):
+                if len(source) == 0 or (last_search_ts is not None and last_search_ts == source.iloc[-1].name):
                     search_left = False
                     continue
                 last_search_ts = source.iloc[-1].name

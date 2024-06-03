@@ -1,7 +1,8 @@
 import os
+
 from dotenv import load_dotenv
 
-load_dotenv('.env', override=True)
+load_dotenv(".env", override=True)
 
 config = {
     "bybit_keys": {
@@ -14,6 +15,7 @@ config = {
         "bybittest1": {
             "API_KEY": os.getenv("BYBIT_DEMO_API_KEY"),
             "SECRET_KEY": os.getenv("BYBIT_DEMO_SECRET_KEY"),
+
         }
-    }
+    },
 }
